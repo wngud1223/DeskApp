@@ -36,7 +36,7 @@
 ## 설정파일
 ### LogIn
 DB의 저장된 정보와의 비교를통해 저장된 정보와 입력된정보가 다르거나 존재하지않을시 로그인이 되지않으며 alert창이 보여진다
-```
+```java
 script type="text/javascript">
 		$('#login').click(function() {
 			var id = $("input[type=text][name=id]").val()
@@ -62,14 +62,99 @@ script type="text/javascript">
 			});
 		})
 ```
-### GoToWork/GoToHome/LogOut
+### Header
+gtag로 화면전환시 로딩화면을 보여주었습니다.<br/>
+출근버튼과 퇴근버튼클릭시 로그인한 사용자의 출근시간과 퇴근시간이 저장되도록 만들었습니다.<br/>
+인사팀 직원만 보여주는 목록을 만들었습니다.
+```java
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async
+	src="https://www.googletagmanager.com/gtag/js?id=UA-119386393-1"></script>
+<script>
+	window.dataLayer = window.dataLayer || [];
+	function gtag() {
+		dataLayer.push(arguments);
+	}
+	gtag('js', new Date());
 
-```
+	gtag('config', 'UA-119386393-1');
+</script>
 
+<!--출퇴근버튼 Html-->
+<input style="display: none" class="btn btn-success" type="button" value="출근" id = "gowork"'>
+<input style="display: none" class="btn btn-success" type="button" value="퇴근" id = "gohome" onclick='gotohome();'>
+<!--출퇴근버튼 Script-->
+$('#gowork').click(function() {
+		$.ajax({
+			type : 'post',
+			url : '${contextPath}/insertattend.do',
+			success : function(data){
+				 alert(data); 
+				 $.ajax({
+						type : 'post',
+						url : '${contextPath}/attendbutton.do',
+						success : function(data){
+							if(data == "0"){
+								$('#gowork').css('display','block');
+								$('#gohome').css('display','none');
+							}else{
+								$('#gohome').css('display','block');
+								$('#gowork').css('display','none');
+							}
+						},
+						error : function() {
+							 alert("gowork button err"); 
+						}
+					})
+			},
+			error : function() {
+				 alert("gowork err"); 
+			}
+		})
+	}) 
+	function gotohome() {
+		$.ajax({
+			type : 'post',
+			url : '${contextPath}/updateattend.do',
+			success : function(data){
+				alert(data); 
+				sessionStorage.clear();
+				location.href="${contextPath}/";
+			},
+			error : function() {
+				 alert("gohome err"); 
+			}
+		})
+}
+
+<!--인사팀목록-->
+<c:if test="${dept_no eq '1'}">
+	<li class="dropdown">
+		<a href="javascript:;" class="dropdown-toggle">
+			<span class="micon dw dw-library"></span><span class="mtext">근태관리</span>
+		</a>
+	<ul class="submenu">
+		<li><a href="${contextPath}/attendancelist.do">근태 리스트</a></li>
+	</ul>
+		</li>
+	</c:if>
+	<c:if test="${dept_no ne '1'}">
+	</c:if>
+	<c:if test="${dept_no eq '1'}">
+		<li class="dropdown">
+			<a href="javascript:;" class="dropdown-toggle">
+				<span class="micon dw dw-library"></span><span class="mtext">사원 관리</span>
+			</a>
+	<ul class="submenu">
+		<li><a href="memberlist.do">사원 목록</a></li>
+		<li><a href="insertmember">사원 추가</a></li>
+	</ul>
+		</li>
+</c:if>
 ```
 ### MemberList
 ajax를 통하여 선택한 부서별로 목록을 가지고오며 사원의 이름을 검색하여 DB에서 해당 직원의 데이터를 불러올수있다
-```
+```java
 <--searchMemberList mapper-->
 <select id="searchmemberlist" resultMap="resultMember" resultType="arraylist" parameterType="string">SELECT * FROM memberWHERE nameLIKE '%'||#{keyword}||'%'ORDER BY dept_no desc </select>
 <--Html-->
@@ -189,7 +274,7 @@ $(document).ready(function() {
 ```
 ### AttendanceList
 근태리스트를 오늘, 일주일의 선택이 가능하며 데이트 피커를 사용하여 날짜를 선택하여 검색가능하다.
-```
+```java
 <--Html-->
 <div class="btn-group btn-group-toggle" data-toggle="buttons" >
 <label class="btn btn-outline-secondary active">
@@ -275,7 +360,7 @@ $("#datepicker").datepicker({
 ### AttendanceDetail
 fullCalendar 를 이용하여 해당달을 선택할수있으며 해당달의  출근시간과 퇴근시간을 일별로 보여준다.<br/>
 Jstl을 이용하여 Footer에 DB에 저장된 이번달의 출근시간과 오늘의 출퇴근시간을 보여준다.
-```
+```java
 <--Script-->
 (function () {
 		jQuery(function() {
