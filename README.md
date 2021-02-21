@@ -1,2 +1,1 @@
-# DeskApp
-##### made by 곽주형
+# DeskApp ##### made by 곽주형
