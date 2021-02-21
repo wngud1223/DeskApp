@@ -61,6 +61,44 @@ script type="text/javascript">
 				}
 			});
 		})
+		
+<--javaCode-->
+@RequestMapping("/")
+	public ModelAndView goLogin( ModelAndView mv,HttpSession session,HttpServletRequest request) {
+		String seesionid = (String)session.getAttribute("loginId");
+		if(seesionid==null||seesionid.equals("")) {
+			mv.setViewName("member/login");
+		}else {
+			mv.setViewName("redirect:home.do");	
+		}	
+		return mv;
+	}
+
+	@RequestMapping(value = "/login.do", method = RequestMethod.POST, produces ="application/text; charset=utf8")
+	@ResponseBody
+	public String login(Member m, HttpSession session, HttpServletRequest request) {
+		System.out.println("rrr1:" + m.getPassword());
+		System.out.println("rrr2:" + m.getId());
+		String a = "1";
+		try {
+			Member result = mService.login(m); 
+			System.out.println("result = "+result);
+			if(result == null) {
+				a = "1";
+			}else {
+				session.setAttribute("loginId", result.getId());
+				session.setAttribute("loginProfile", result.getProfile());
+				session.setAttribute("loginName", result.getName());
+				session.setAttribute("dept_no", result.getDept_no());
+				session.setAttribute("position",result.getPosition());
+				a = "2";
+			}
+		}catch(Exception e) {
+			e.printStackTrace(); 
+		}
+		System.out.println(a);
+		return a;
+	}
 ```
 ### Header
 gtag로 화면전환시 로딩화면을 보여주었습니다.<br/>
@@ -126,7 +164,71 @@ $('#gowork').click(function() {
 			}
 		})
 }
-
+<--JavaCode-->
+		@ResponseBody
+		@RequestMapping(value="/insertattend.do", method = RequestMethod.POST,produces ="application/text; charset=utf8")
+		public String insertattend(HttpSession session, HttpServletRequest request) {
+			String id = (String)session.getAttribute("loginId");
+			System.out.println("인써트 세션아이디 :"+id);
+			String b = null;
+			List<Attendance> list1 = new ArrayList<Attendance>();
+			list1 = attendanceService.selectattend(id);
+			System.out.println("인써트 조회 a : "+list1);
+			if(list1.size()==0) {
+				attendanceService.insertattend(id);
+				System.out.println("인서트 성공");
+				b = "출근 처리되었습니다";
+			}else {
+				b = "이미 출근하셨습니다";
+			}
+			return b;
+		}
+		
+		@ResponseBody
+		@RequestMapping(value="/updateattend.do",method = RequestMethod.POST,produces ="application/text; charset=utf8")
+		public String updateattend(HttpSession session, HttpServletRequest request) throws ParseException {
+			session = request.getSession();
+			String id = (String)session.getAttribute("loginId");
+			List<Attendance> list1 = new ArrayList<Attendance>();
+			String b = "";
+			String a = "";
+			list1=attendanceService.selectattend2(id);
+			if(list1.size()==0) {
+				a=attendanceService.selectattendafter(id);
+				SimpleDateFormat format = new SimpleDateFormat ("HH:mm:ss");
+				Calendar cal = Calendar.getInstance();
+				Date curDate = new Date();
+				String xxx = format.format(curDate);
+				curDate = format.parse(format.format(curDate));
+				Date x = format.parse(xxx);
+				Date aa = format.parse(a);
+				long bbb = x.getTime();
+				long aaa = aa.getTime();
+				long ccc = (x.getTime()-aa.getTime());
+				String date =(String)format.format(new Date(ccc));
+				String date2 =(String)format.format(new Date(bbb));
+				String date3 =(String)format.format(new Date(aaa));
+				Date date4 = format.parse(date);
+				cal.setTime(date4);
+				cal.add(Calendar.HOUR,-9);
+				String date5 = format.format(cal.getTime());
+				DateTimeFormatter dtf3 = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+				SimpleDateFormat format2 = new SimpleDateFormat ("HH:mm:ss");
+				System.out.println(dtf3.format(LocalDateTime.now()));
+				String subYear = dtf3.format(LocalDateTime.now());
+				String addYear = subYear.substring(0, 10);
+				date2 = addYear +" "+ date2;
+				date5 = addYear + " " + date5;
+				attendanceService.updateattend(id,date5,date2);
+				session.invalidate();
+				b="퇴근 처리되었습니다";
+				
+			}else {
+				b="이미 퇴근하셨습니다";
+			}
+			return b;
+		}
+		
 <!--인사팀목록-->
 <c:if test="${dept_no eq '1'}">
 	<li class="dropdown">
@@ -147,10 +249,11 @@ $('#gowork').click(function() {
 			</a>
 	<ul class="submenu">
 		<li><a href="memberlist.do">사원 목록</a></li>
-		<li><a href="insertmember">사원 추가</a></li>
+		<li><a href="insertmember">사원 추가</a></li>>
 	</ul>
 		</li>
 </c:if>
+
 ```
 ### MemberList
 ajax를 통하여 선택한 부서별로 목록을 가지고오며 사원의 이름을 검색하여 DB에서 해당 직원의 데이터를 불러올수있다
@@ -271,6 +374,48 @@ $(document).ready(function() {
 		});
 	}) 
 	});
+	
+<--javaCode-->	
+public Object deptlist(@RequestParam(name="dept" ,defaultValue = "") String dept_no) {
+		List<Member> list = new ArrayList<Member>();
+
+		if(dept_no==null||dept_no.equals("")) {	
+			try {
+				list = mService.memberAllList();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}else{
+			try {
+				list = mService.deptmemberlist(dept_no);				
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		System.out.println(list);
+		return list;
+	}
+
+public Object searchmemberlist(
+			@RequestParam(name="keyword" ,defaultValue = "") String keyword) {
+		System.out.println(keyword);
+		List<Member> list = new ArrayList<Member>();
+		if(keyword==null||keyword.equals("")) {	
+			try {
+				list = mService.memberAllList();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}else{
+			try {
+				list = mService.searchmemberlist(keyword);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		System.out.println(list);
+		return list;
+	}
 ```
 ### AttendanceList
 근태리스트를 오늘, 일주일의 선택이 가능하며 데이트 피커를 사용하여 날짜를 선택하여 검색가능하다.
@@ -356,6 +501,60 @@ $("#datepicker").datepicker({
                     return false;
             }
         }
+
+<--javaCode-->	
+public Object searchattendancelist(
+				@RequestParam(name="startdate" ,defaultValue = "") String startdate,
+				@RequestParam(name="enddate" ,defaultValue = "") String enddate
+				) {
+			
+			List<Attendance> list = new ArrayList<Attendance>();
+			try {
+				list = aService.searchattendancelist(startdate,enddate);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			System.out.println(list);
+			return list;
+		}
+
+@RequestMapping("/attendancelist.do")
+	public ModelAndView attendancelist(ModelAndView mv) throws ParseException {
+		List<Attendance> daylist = attendanceService.attendanceDaylist();
+		List<Attendance> weeklist = attendanceService.attendanceWeeklist();
+		List<String> daywt = new ArrayList<String>(); 
+		List<String> weekwt = new ArrayList<String>(); 
+		SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
+		String workTime1 = null;
+		String workTime2 = null;
+		String aaa = "00:00:00";
+		Date bbb = df.parse(aaa);
+		for(int i = 0; i < daylist.size(); i++){
+			if(daylist.get(i).getAttend_work_time()!= null) {
+			workTime1 = df.format(daylist.get(i).getAttend_work_time());
+			daywt.add(workTime1);
+			}else {
+				daylist.get(i).setAttend_gotohome(bbb);
+				daywt.add("퇴근하지않음");
+			}
+		}
+		for(int i = 0; i < weeklist.size(); i++){
+			if(weeklist.get(i).getAttend_work_time()!=null) {
+			workTime2 = df.format(weeklist.get(i).getAttend_work_time());
+			weekwt.add(workTime2);
+			}else {
+				weeklist.get(i).setAttend_gotohome(bbb);
+				weekwt.add("퇴근하지않음");
+			}
+		}
+		mv.setViewName("attendance/attendancelist");
+		mv.addObject("daywt" , daywt);
+		mv.addObject("weekwt" , weekwt);
+		mv.addObject("daylist" , daylist);
+		mv.addObject("weeklist" , weeklist);
+		return mv;
+	}
+
 ```
 ### AttendanceDetail
 fullCalendar 를 이용하여 해당달을 선택할수있으며 해당달의  출근시간과 퇴근시간을 일별로 보여준다.<br/>
@@ -420,4 +619,81 @@ Jstl을 이용하여 Footer에 DB에 저장된 이번달의 출근시간과 오�
 <c:if test="${empty worktime }">
 	<div class="lower_bar">출근 또는 퇴근되지 않았습니다.</div>
 </c:if>
+
+<--javaCode-->
+
+	@RequestMapping("/attendancedetail.do")
+	public ModelAndView attendancedetail(ModelAndView mv,@RequestParam(name="id" , defaultValue="") String id) throws ParseException {
+		List<Attendance> list = attendanceService.attendancedetail(id);
+		 List<Attendance> today = attendanceService.attendToDay(id);
+		 SimpleDateFormat workFormat = new SimpleDateFormat("HH:mm:ss");
+		 String aaa = "00:00:00";
+		 Date bbb = workFormat.parse(aaa);
+		 if(today.size()!=0) {
+		 if(today.get(0).getAttend_work_time()==null) {
+			 today.get(0).setAttend_gotohome(bbb);
+		 }else {
+		 String worktime = workFormat.format(today.get(0).getAttend_work_time());
+		 mv.addObject("worktime", worktime);
+		 mv.addObject("today",today);
+		 }
+		 }
+		List<Attendance> average = attendanceService.workaverage(id);	
+		String as_h = "";
+		String as_m = "";
+		String as_s = "";
+		int ai_h = 0;
+		int ai_m = 0;
+		int ai_s = 0;
+		double sum_h = 0;
+		double sum_m = 0;
+		double sum_s = 0;
+		double double_h = 0.0;
+		double double_m = 0.0;
+		double double_s = 0.0;
+		Date utilDate = new Date();
+		Timestamp b = null;
+		for(int i = 0; i < average.size(); i++){
+			if(average.get(i) == null) {
+				continue;
+			}
+			utilDate = average.get(i).getAttend_work_time();
+			String asdas = String.valueOf(utilDate);
+			SimpleDateFormat transFormat = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+			String stringAg = transFormat.format(utilDate);
+			as_h = stringAg.substring(9, 11);
+			as_m = stringAg.substring(12, 14);
+			as_s = stringAg.substring(15, 17);
+			if(as_h.contains("0")){
+				as_h = as_h.substring(1);	
+			}
+			if(as_m.contains("0")){
+				as_m = as_m.substring(1);
+			}
+			if(as_s.contains("0")){
+				as_s = as_s.substring(1);
+			}
+			ai_h = Integer.parseInt(as_h);
+			ai_m = Integer.parseInt(as_m);
+			ai_s = Integer.parseInt(as_s);
+			double_h = Math.round(ai_h*100/100.0);
+			double_m = Math.round(ai_m*100/100.0);
+			double_s = Math.round(ai_s*100/100.0);
+			sum_h+=ai_h;
+			sum_m+=ai_m;
+			sum_s+=ai_s;
+		}
+		double hh = double_h;
+		double mm = double_m/(double)60;
+		double ss = double_s/(double)6000;
+		double sumResult = hh+mm+ss;
+		double avgResult = sumResult/(double)average.size();
+		String avgString = String.format("%,.3f", avgResult);
+		mv.addObject("avgString",avgString);
+		mv.addObject("list",list);
+		mv.setViewName("attendance/attendancedetail");
+		return mv;	
+	}
 ```
+
+
